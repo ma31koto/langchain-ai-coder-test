@@ -1,0 +1,39 @@
+name: AI Auto Coding
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  auto-code:
+    if: github.event.label.name == 'ai-code'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # ★ここで pip install を実行させています
+      - name: Install dependencies
+        run: |
+          pip install langchain-google-genai langchain-core
+
+      # ★ここで GEMINI_API_KEY を環境変数として渡しています
+      - name: Run AI Coder
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_EVENT_PATH: ${{ env.GITHUB_EVENT_PATH }}
+        run: python ai_coder.py
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "feat: AI-generated code for Issue #${{ github.event.issue.number }}"
+          title: "AI-Generated: ${{ github.event.issue.title }}"
+          body: "Fixes #${{ github.event.issue.number }} via LangChain AI Auto Coder."
+          branch: "ai-fix-issue-${{ github.event.issue.number }}"
