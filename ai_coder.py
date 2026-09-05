@@ -10,8 +10,7 @@ with open(event_path, "r") as f:
 issue_title = event_data["issue"]["title"]
 issue_body = event_data["issue"]["body"] or ""
 
-# エラーメッセージの指定通り gemini-3.6-flash に変更
-llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "あなたは優秀なプログラマーです。ユーザーのリクエストに基づいてPythonコードのみを出力してください。解説やMarkdownのコードブロック(```)は含めず、純粋なコードのみを返してください。"),
@@ -19,7 +18,16 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 chain = prompt | llm
-generated_code = chain.invoke({"title": issue_title, "body": issue_body}).content
+res = chain.invoke({"title": issue_title, "body": issue_body}).content
+
+# 返り値がリストの場合と文字列の場合の両方に対応
+if isinstance(res, list):
+    generated_code = "".join([str(item) for item in res])
+else:
+    generated_code = str(res)
+
+# マークダウンのコードブロックが含まれている場合は除去
+generated_code = generated_code.replace("```python", "").replace("```", "").strip()
 
 with open("generated_output.py", "w") as f:
     f.write(generated_code)
